@@ -68,6 +68,7 @@ export interface Task {
   issue_key: string;
   title: string;
   status: AgentStatus | "pending";
+  jira_status: string;
   agent_name: string | null;
   agent_id: string | null;
   elapsed: string;

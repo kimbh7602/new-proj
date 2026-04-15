@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types";
 
@@ -10,6 +11,8 @@ interface TaskListProps {
   boardFilter: string;
   onBoardFilterChange: (board: string) => void;
   boards: string[];
+  jiraStatuses: string[];
+  onCreateIssue: () => void;
 }
 
 const statusDotColor: Record<string, string> = {
@@ -37,13 +40,30 @@ export function TaskList({
   boardFilter,
   onBoardFilterChange,
   boards,
+  jiraStatuses,
+  onCreateIssue,
 }: TaskListProps) {
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filteredTasks =
+    statusFilter === "all"
+      ? tasks
+      : tasks.filter((t) => t.jira_status === statusFilter);
+
   return (
     <div className="w-[300px] bg-zinc-900 border-r border-zinc-800 flex flex-col h-full overflow-hidden">
       <div className="p-4 border-b border-zinc-800">
-        <h2 className="text-sm font-semibold text-white">Tasks</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-sm font-semibold text-white">Tasks</h2>
+          <button
+            className="text-xs text-blue-500 hover:text-blue-400"
+            onClick={onCreateIssue}
+          >
+            + 새 이슈
+          </button>
+        </div>
         <select
-          className="mt-2 w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-300"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-300"
           value={boardFilter}
           onChange={(e) => onBoardFilterChange(e.target.value)}
         >
@@ -54,16 +74,28 @@ export function TaskList({
             </option>
           ))}
         </select>
+        <select
+          className="mt-1.5 w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-300"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All Statuses</option>
+          {jiraStatuses.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {tasks.length === 0 && (
+        {filteredTasks.length === 0 && (
           <div className="px-4 py-12 text-center text-zinc-500 text-sm">
             <p className="font-medium text-zinc-400 mb-1">작업이 없습니다</p>
             <p>Jira 보드를 구독하면 여기에 표시됩니다.</p>
           </div>
         )}
-        {tasks.map((task) => (
+        {filteredTasks.map((task) => (
           <button
             key={task.issue_key}
             className={cn(
@@ -88,7 +120,7 @@ export function TaskList({
                     statusDotColor[task.status] || "bg-zinc-500"
                   )}
                 />
-                {statusLabel[task.status] || task.status}
+                {task.jira_status || statusLabel[task.status] || task.status}
               </span>
               <span>
                 {task.agent_name ? `${task.agent_name} · ` : ""}

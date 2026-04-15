@@ -6,6 +6,7 @@ import { TaskList } from "@/components/task-list";
 import { TaskDetail } from "@/components/task-detail";
 import { AgentDashboard } from "@/components/agent-dashboard";
 import { BoardPickerModal } from "@/components/board-picker-modal";
+import { CreateIssueModal } from "@/components/create-issue-modal";
 import { useJiraBoards, useJiraIssues } from "@/lib/use-jira";
 import { useAgents } from "@/lib/use-realtime";
 import type { Task, Result } from "@/types";
@@ -17,6 +18,7 @@ export default function Home() {
   const [subscribedBoardIds, setSubscribedBoardIds] = useState<number[]>([]);
   const [activeBoardId, setActiveBoardId] = useState<number | null>(null);
   const [showBoardPicker, setShowBoardPicker] = useState(false);
+  const [showCreateIssue, setShowCreateIssue] = useState(false);
 
   const { boards: jiraBoards, loading: boardsLoading } = useJiraBoards();
   const { issues: jiraIssues } = useJiraIssues(activeBoardId);
@@ -56,6 +58,7 @@ export default function Home() {
         issue_key: issue.key,
         title: issue.fields.summary,
         status,
+        jira_status: issue.fields.status.name,
         agent_name: agent?.name || null,
         agent_id: agent?.id || null,
         elapsed: agent ? "진행 중" : "",
@@ -65,6 +68,12 @@ export default function Home() {
       };
     });
   }, [jiraIssues, agents]);
+
+  // Extract unique Jira statuses for filter
+  const jiraStatuses = useMemo(() => {
+    const statuses = new Set(tasks.map((t) => t.jira_status).filter(Boolean));
+    return Array.from(statuses).sort();
+  }, [tasks]);
 
   // Filter tasks by board
   const filteredTasks = useMemo(() => {
@@ -104,6 +113,34 @@ export default function Home() {
     if (activeBoardId === boardId) {
       const remaining = subscribedBoardIds.filter((id) => id !== boardId);
       setActiveBoardId(remaining.length > 0 ? remaining[0] : null);
+    }
+  };
+
+  const projectKeys = useMemo(() => {
+    const keys = new Set(
+      subscribedBoards
+        .map((b) => b.location?.projectKey)
+        .filter(Boolean) as string[]
+    );
+    return Array.from(keys);
+  }, [subscribedBoards]);
+
+  const handleCreateIssue = async (
+    projectKey: string,
+    summary: string,
+    description: string
+  ) => {
+    await fetch("/api/jira/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_key: projectKey, summary, description }),
+    });
+    setShowCreateIssue(false);
+    // Refresh by toggling active board
+    if (activeBoardId) {
+      const id = activeBoardId;
+      setActiveBoardId(null);
+      setTimeout(() => setActiveBoardId(id), 100);
     }
   };
 
@@ -149,6 +186,8 @@ export default function Home() {
               if (board) setActiveBoardId(board.id);
             }}
             boards={subscribedBoards.map((b) => b.name)}
+            jiraStatuses={jiraStatuses}
+            onCreateIssue={() => setShowCreateIssue(true)}
           />
           <TaskDetail
             task={currentTask}
@@ -158,6 +197,13 @@ export default function Home() {
             onReply={(key, msg) => handleReply(key, "reply", msg)}
           />
         </>
+      )}
+      {showCreateIssue && (
+        <CreateIssueModal
+          projectKeys={projectKeys}
+          onSubmit={handleCreateIssue}
+          onClose={() => setShowCreateIssue(false)}
+        />
       )}
       {showBoardPicker && (
         <BoardPickerModal

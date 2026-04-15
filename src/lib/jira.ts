@@ -118,6 +118,69 @@ export async function getIssueDetail(issueKey: string): Promise<JiraIssueDetail>
   return data as JiraIssueDetail;
 }
 
+export async function getIssueTransitions(issueKey: string) {
+  const data = await jiraFetch(`/issue/${issueKey}/transitions`, "api");
+  return data.transitions as { id: string; name: string }[];
+}
+
+export async function transitionIssue(issueKey: string, transitionId: string) {
+  if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
+
+  const res = await fetch(
+    `${JIRA_BASE_URL}/rest/api/3/issue/${issueKey}/transitions`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ transition: { id: transitionId } }),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(`Jira transition error: ${res.status} ${res.statusText}`);
+  }
+}
+
+export async function createIssue(projectKey: string, summary: string, description?: string) {
+  if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
+
+  const body: Record<string, unknown> = {
+    fields: {
+      project: { key: projectKey },
+      summary,
+      issuetype: { name: "Task" },
+    },
+  };
+
+  if (description) {
+    body.fields = {
+      ...(body.fields as Record<string, unknown>),
+      description: {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: description }],
+          },
+        ],
+      },
+    };
+  }
+
+  const res = await fetch(`${JIRA_BASE_URL}/rest/api/3/issue`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Jira create error: ${res.status} ${err}`);
+  }
+
+  return res.json() as Promise<{ id: string; key: string; self: string }>;
+}
+
 // Convert Atlassian Document Format (ADF) to plain text
 export function adfToText(node: unknown): string {
   if (!node || typeof node !== "object") return "";

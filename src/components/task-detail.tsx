@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -39,6 +39,36 @@ export function TaskDetail({
   const { detail, loading: detailLoading } = useJiraDetail(
     task?.issue_key ?? null
   );
+  const [transitions, setTransitions] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [transitioning, setTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (!task?.issue_key) return;
+    fetch(`/api/jira/transition?key=${task.issue_key}`)
+      .then((res) => res.json())
+      .then((data) => setTransitions(data.transitions || []))
+      .catch(() => setTransitions([]));
+  }, [task?.issue_key]);
+
+  const handleTransition = async (transitionId: string) => {
+    if (!task) return;
+    setTransitioning(true);
+    await fetch("/api/jira/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        issue_key: task.issue_key,
+        transition_id: transitionId,
+      }),
+    });
+    setTransitioning(false);
+    // Refresh transitions
+    const res = await fetch(`/api/jira/transition?key=${task.issue_key}`);
+    const data = await res.json();
+    setTransitions(data.transitions || []);
+  };
 
   if (!task) {
     return (
@@ -106,13 +136,32 @@ export function TaskDetail({
             )}
           </div>
         </div>
-        <Badge
-          variant="outline"
-          className={statusBadgeVariant[task.status] || ""}
-        >
-          {task.status === "pending" && "⏳ "}
-          {task.status}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {transitions.length > 0 && (
+            <select
+              className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300"
+              value=""
+              disabled={transitioning}
+              onChange={(e) => {
+                if (e.target.value) handleTransition(e.target.value);
+              }}
+            >
+              <option value="">상태 변경...</option>
+              {transitions.map((t) => (
+                <option key={t.id} value={t.id}>
+                  → {t.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <Badge
+            variant="outline"
+            className={statusBadgeVariant[task.status] || ""}
+          >
+            {task.status === "pending" && "⏳ "}
+            {detail?.status || task.status}
+          </Badge>
+        </div>
       </div>
 
       {/* Content */}
