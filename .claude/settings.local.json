@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebSearch(*)",
+      "WebFetch(*)",
+      "Skill(*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:mcpcat.io)",
+      "Bash(claude mcp:*)",
+      "Bash(npx @anthropic-ai/claude-code mcp --help)",
+      "Bash(npx @anthropic-ai/mcp-playwright --help)",
+      "Bash(npx @anthropic-ai/mcp-postgres --help)",
+      "Bash(npm search:*)",
+      "Bash(gh api:*)",
+      "Bash(bash install.sh --profile full)",
+      "Skill(office-hours)",
+      "Skill(office-hours:*)",
+      "Skill(plan-eng-review)",
+      "Skill(plan-design-review)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(mv CLAUDE.md /tmp/CLAUDE.md.bak)",
+      "Bash(npx shadcn@latest init -d)"
+    ]
+  }
+}
