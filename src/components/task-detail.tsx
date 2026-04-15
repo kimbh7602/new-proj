@@ -7,6 +7,8 @@ import remarkGfm from "remark-gfm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { useJiraDetail } from "@/lib/use-jira-detail";
 import type { Task, Result } from "@/types";
 
 interface TaskDetailProps {
@@ -34,6 +36,9 @@ export function TaskDetail({
   onReply,
 }: TaskDetailProps) {
   const [message, setMessage] = useState("");
+  const { detail, loading: detailLoading } = useJiraDetail(
+    task?.issue_key ?? null
+  );
 
   if (!task) {
     return (
@@ -54,6 +59,16 @@ export function TaskDetail({
     setMessage("");
   };
 
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("ko-KR", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -62,9 +77,34 @@ export function TaskDetail({
           <h2 className="text-base font-semibold text-white">
             {task.issue_key} {task.title}
           </h2>
-          <span className="text-xs text-zinc-500">
-            {task.agent_name || "Unassigned"} · {task.elapsed}
-          </span>
+          <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
+            <span>{task.agent_name || "Unassigned"}</span>
+            {detail?.assignee && (
+              <>
+                <span>·</span>
+                <span>담당: {detail.assignee}</span>
+              </>
+            )}
+            {detail?.priority && (
+              <>
+                <span>·</span>
+                <span>{detail.priority}</span>
+              </>
+            )}
+            {detail?.labels && detail.labels.length > 0 && (
+              <>
+                <span>·</span>
+                {detail.labels.map((l) => (
+                  <span
+                    key={l}
+                    className="bg-zinc-800 px-1.5 py-0.5 rounded text-[10px]"
+                  >
+                    {l}
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
         </div>
         <Badge
           variant="outline"
@@ -76,13 +116,36 @@ export function TaskDetail({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {result ? (
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Jira Description */}
+        {detailLoading ? (
+          <div className="space-y-2">
+            <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-20 bg-zinc-800 rounded animate-pulse" />
+          </div>
+        ) : detail?.description ? (
+          <div>
+            <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2">
+              Description
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3">
+              <ReactMarkdown
+                rehypePlugins={[rehypeHighlight]}
+                remarkPlugins={[remarkGfm]}
+              >
+                {detail.description}
+              </ReactMarkdown>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Agent Result */}
+        {result && (
           <div>
             <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2">
               Agent Result
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3">
               <ReactMarkdown
                 rehypePlugins={[rehypeHighlight]}
                 remarkPlugins={[remarkGfm]}
@@ -91,7 +154,9 @@ export function TaskDetail({
               </ReactMarkdown>
             </div>
           </div>
-        ) : (
+        )}
+
+        {!result && !detail?.description && !detailLoading && (
           <div className="text-center py-12 text-zinc-500 text-sm">
             {task.status === "running"
               ? "에이전트가 작업 중입니다..."
@@ -100,8 +165,43 @@ export function TaskDetail({
         )}
 
         {task.has_pending_approval && (
-          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/30 border border-amber-700/50 rounded text-amber-400 text-xs">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/30 border border-amber-700/50 rounded text-amber-400 text-xs">
             ⏳ 승인이 필요합니다
+          </div>
+        )}
+
+        {/* Comments */}
+        {detail && detail.comments.length > 0 && (
+          <div>
+            <Separator className="bg-zinc-800 mb-6" />
+            <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-3">
+              Comments ({detail.comments.length})
+            </div>
+            <div className="space-y-3">
+              {detail.comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-zinc-300">
+                      {comment.author}
+                    </span>
+                    <span className="text-[11px] text-zinc-500">
+                      {formatDate(comment.created)}
+                    </span>
+                  </div>
+                  <div className="prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3 text-zinc-400">
+                    <ReactMarkdown
+                      rehypePlugins={[rehypeHighlight]}
+                      remarkPlugins={[remarkGfm]}
+                    >
+                      {comment.body}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

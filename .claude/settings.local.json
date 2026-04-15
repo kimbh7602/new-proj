@@ -34,7 +34,12 @@
       "Bash($B screenshot:*)",
       "Bash(open:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(vercel env:*)",
+      "Bash(curl -s http://localhost:3000/api/jira/boards)"
     ]
   }
 }

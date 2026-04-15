@@ -1,187 +1,172 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TaskList } from "@/components/task-list";
 import { TaskDetail } from "@/components/task-detail";
 import { AgentDashboard } from "@/components/agent-dashboard";
-import type { Task, Agent, Result } from "@/types";
-
-// Mock data for initial development
-const mockTasks: Task[] = [
-  {
-    issue_key: "BH-42",
-    title: "로그인 API 리팩토링",
-    status: "pending",
-    agent_name: "Agent-1",
-    agent_id: "agent-1",
-    elapsed: "12분",
-    has_pending_approval: true,
-    latest_result_id: "r-1",
-    latest_event: null,
-  },
-  {
-    issue_key: "BH-39",
-    title: "알림 서비스 구현",
-    status: "completed",
-    agent_name: "Agent-2",
-    agent_id: "agent-2",
-    elapsed: "3분 전",
-    has_pending_approval: false,
-    latest_result_id: "r-2",
-    latest_event: null,
-  },
-  {
-    issue_key: "INFRA-15",
-    title: "CI 파이프라인 수정",
-    status: "error",
-    agent_name: "Agent-3",
-    agent_id: "agent-3",
-    elapsed: "실패",
-    has_pending_approval: false,
-    latest_result_id: null,
-    latest_event: null,
-  },
-  {
-    issue_key: "BH-45",
-    title: "결제 모듈 테스트 추가",
-    status: "running",
-    agent_name: "Agent-1",
-    agent_id: "agent-1",
-    elapsed: "2분",
-    has_pending_approval: false,
-    latest_result_id: null,
-    latest_event: null,
-  },
-];
-
-const mockAgents: Agent[] = [
-  {
-    id: "agent-1",
-    team_id: "t-1",
-    name: "Agent-1",
-    type: "symphony",
-    orchestrator_id: "orch-1",
-    status: "running",
-    current_task_ids: ["BH-42"],
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "agent-2",
-    team_id: "t-1",
-    name: "Agent-2",
-    type: "symphony",
-    orchestrator_id: "orch-1",
-    status: "completed",
-    current_task_ids: [],
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "agent-3",
-    team_id: "t-1",
-    name: "Agent-3",
-    type: "symphony",
-    orchestrator_id: "orch-1",
-    status: "error",
-    current_task_ids: [],
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "agent-4",
-    team_id: "t-1",
-    name: "Agent-4",
-    type: "symphony",
-    orchestrator_id: "orch-1",
-    status: "idle",
-    current_task_ids: [],
-    updated_at: new Date().toISOString(),
-  },
-];
-
-const mockResult: Result = {
-  id: "r-1",
-  agent_id: "agent-1",
-  team_id: "t-1",
-  event_id: "e-1",
-  jira_issue_key: "BH-42",
-  content_md: `## Plan #4: 로그인 API 리팩토링
-
-현재 \`/api/auth/login\` 엔드포인트의 문제점을 분석하고 다음과 같이 리팩토링합니다:
-
-- JWT 토큰 생성 로직을 \`auth.service.ts\`로 분리
-- 입력 검증에 zod 스키마 적용
-- 에러 응답 표준화 (\`ApiError\` 클래스)
-
-\`\`\`typescript
-// Before
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  // ... 80 lines of mixed logic
-});
-
-// After
-app.post('/login',
-  validate(loginSchema),
-  authController.login
-);
-\`\`\`
-
-### 영향 범위
-- \`src/routes/auth.ts\` — 기존 라우트 핸들러 제거
-- \`src/services/auth.service.ts\` — 신규 서비스 파일
-- \`src/schemas/auth.schema.ts\` — zod 스키마
-- \`src/controllers/auth.controller.ts\` — 컨트롤러 분리
-`,
-  created_at: new Date().toISOString(),
-};
+import { BoardPickerModal } from "@/components/board-picker-modal";
+import { useJiraBoards, useJiraIssues } from "@/lib/use-jira";
+import { useAgents } from "@/lib/use-realtime";
+import type { Task, Result } from "@/types";
 
 export default function Home() {
   const [activeView, setActiveView] = useState("tasks");
-  const [selectedTask, setSelectedTask] = useState<string | null>("BH-42");
+  const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [boardFilter, setBoardFilter] = useState("all");
+  const [subscribedBoardIds, setSubscribedBoardIds] = useState<number[]>([]);
+  const [activeBoardId, setActiveBoardId] = useState<number | null>(null);
+  const [showBoardPicker, setShowBoardPicker] = useState(false);
 
-  const boards = [
-    { id: 1, name: "BH Board", project_key: "BH" },
-    { id: 2, name: "INFRA Board", project_key: "INFRA" },
-  ];
+  const { boards: jiraBoards, loading: boardsLoading } = useJiraBoards();
+  const { issues: jiraIssues } = useJiraIssues(activeBoardId);
+  const { agents } = useAgents();
 
-  const currentTask = mockTasks.find((t) => t.issue_key === selectedTask) ?? null;
-  const currentResult = selectedTask === "BH-42" ? mockResult : null;
+  // Auto-subscribe to first board
+  useEffect(() => {
+    if (jiraBoards.length > 0 && subscribedBoardIds.length === 0) {
+      const firstId = jiraBoards[0].id;
+      setSubscribedBoardIds([firstId]);
+      setActiveBoardId(firstId);
+    }
+  }, [jiraBoards, subscribedBoardIds.length]);
+
+  // Convert Jira issues to Task format
+  const tasks: Task[] = useMemo(() => {
+    return jiraIssues.map((issue) => {
+      // Find agent working on this issue
+      const agent = agents.find((a) =>
+        a.current_task_ids.includes(issue.key)
+      );
+
+      let status: Task["status"] = "idle";
+      if (agent) {
+        status = agent.status === "running" ? "running" : agent.status;
+      } else {
+        // Map Jira status to our status
+        const jiraStatus = issue.fields.status.name.toLowerCase();
+        if (jiraStatus.includes("done") || jiraStatus.includes("완료")) {
+          status = "completed";
+        } else if (jiraStatus.includes("progress") || jiraStatus.includes("진행")) {
+          status = "running";
+        }
+      }
+
+      return {
+        issue_key: issue.key,
+        title: issue.fields.summary,
+        status,
+        agent_name: agent?.name || null,
+        agent_id: agent?.id || null,
+        elapsed: agent ? "진행 중" : "",
+        has_pending_approval: false,
+        latest_result_id: null,
+        latest_event: null,
+      };
+    });
+  }, [jiraIssues, agents]);
+
+  // Filter tasks by board
+  const filteredTasks = useMemo(() => {
+    if (boardFilter === "all") return tasks;
+    const board = jiraBoards.find((b) => b.name === boardFilter);
+    if (!board?.location?.projectKey) return tasks;
+    return tasks.filter((t) =>
+      t.issue_key.startsWith(board.location!.projectKey)
+    );
+  }, [tasks, boardFilter, jiraBoards]);
+
+  const subscribedBoards = jiraBoards.filter((b) =>
+    subscribedBoardIds.includes(b.id)
+  );
+
+  const sidebarBoards = subscribedBoards.map((b) => ({
+    id: b.id,
+    name: b.name,
+    project_key: b.location?.projectKey || "",
+  }));
+
+  const currentTask =
+    filteredTasks.find((t) => t.issue_key === selectedTask) ?? null;
+
+  // TODO: Fetch actual result from Supabase
+  const currentResult: Result | null = null;
+
+  const handleBoardSubscribe = (boardId: number) => {
+    if (!subscribedBoardIds.includes(boardId)) {
+      setSubscribedBoardIds((prev) => [...prev, boardId]);
+    }
+    setActiveBoardId(boardId);
+  };
+
+  const handleBoardUnsubscribe = (boardId: number) => {
+    setSubscribedBoardIds((prev) => prev.filter((id) => id !== boardId));
+    if (activeBoardId === boardId) {
+      const remaining = subscribedBoardIds.filter((id) => id !== boardId);
+      setActiveBoardId(remaining.length > 0 ? remaining[0] : null);
+    }
+  };
+
+  const handleReply = async (
+    issueKey: string,
+    action: "approve" | "reject" | "reply",
+    message?: string
+  ) => {
+    await fetch("/api/agents/reply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ issue_key: issueKey, action, message }),
+    });
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         activeView={activeView}
-        onViewChange={setActiveView}
-        boards={boards}
+        onViewChange={(view) => {
+          if (view === "add-board") {
+            setShowBoardPicker(true);
+            return;
+          }
+          setActiveView(view);
+        }}
+        boards={sidebarBoards}
       />
 
       {activeView === "dashboard" ? (
-        <AgentDashboard agents={mockAgents} />
+        <AgentDashboard agents={agents} />
       ) : (
         <>
           <TaskList
-            tasks={mockTasks}
+            tasks={filteredTasks}
             selectedKey={selectedTask}
             onSelect={setSelectedTask}
             boardFilter={boardFilter}
-            onBoardFilterChange={setBoardFilter}
-            boards={["BH Board", "INFRA Board"]}
+            onBoardFilterChange={(filter) => {
+              setBoardFilter(filter);
+              // Switch active board for fetching issues
+              const board = jiraBoards.find((b) => b.name === filter);
+              if (board) setActiveBoardId(board.id);
+            }}
+            boards={subscribedBoards.map((b) => b.name)}
           />
           <TaskDetail
             task={currentTask}
             result={currentResult}
-            onApprove={(key, msg) => {
-              // TODO: Send approval to Symphony via API
-            }}
-            onReject={(key, msg) => {
-              // TODO: Send rejection to Symphony via API
-            }}
-            onReply={(key, msg) => {
-              // TODO: Send reply to Symphony via API
-            }}
+            onApprove={(key, msg) => handleReply(key, "approve", msg)}
+            onReject={(key, msg) => handleReply(key, "reject", msg)}
+            onReply={(key, msg) => handleReply(key, "reply", msg)}
           />
         </>
+      )}
+      {showBoardPicker && (
+        <BoardPickerModal
+          boards={jiraBoards}
+          subscribedIds={subscribedBoardIds}
+          onSubscribe={handleBoardSubscribe}
+          onUnsubscribe={handleBoardUnsubscribe}
+          onClose={() => setShowBoardPicker(false)}
+        />
       )}
     </div>
   );
