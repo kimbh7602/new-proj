@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createIssue } from "@/lib/jira";
 
 export async function POST(request: NextRequest) {
-  const { project_key, summary, description } = (await request.json()) as {
+  const { project_key, summary, description, labels } = (await request.json()) as {
     project_key: string;
     summary: string;
     description?: string;
+    labels?: string[];
   };
 
   if (!project_key || !summary) {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const issue = await createIssue(project_key, summary, description);
+    const issue = await createIssue(project_key, summary, description, labels);
     return NextResponse.json({ ok: true, issue });
   } catch (error) {
     const message =

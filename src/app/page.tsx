@@ -128,12 +128,13 @@ export default function Home() {
   const handleCreateIssue = async (
     projectKey: string,
     summary: string,
-    description: string
+    description: string,
+    labels: string[]
   ) => {
     await fetch("/api/jira/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_key: projectKey, summary, description }),
+      body: JSON.stringify({ project_key: projectKey, summary, description, labels }),
     });
     setShowCreateIssue(false);
     // Refresh by toggling active board

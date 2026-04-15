@@ -140,20 +140,24 @@ export async function transitionIssue(issueKey: string, transitionId: string) {
   }
 }
 
-export async function createIssue(projectKey: string, summary: string, description?: string) {
+export async function createIssue(projectKey: string, summary: string, description?: string, labels?: string[]) {
   if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
 
-  const body: Record<string, unknown> = {
-    fields: {
-      project: { key: projectKey },
-      summary,
-      issuetype: { name: "Task" },
-    },
+  const fields: Record<string, unknown> = {
+    project: { key: projectKey },
+    summary,
+    issuetype: { name: "Task" },
   };
+
+  if (labels && labels.length > 0) {
+    fields.labels = labels;
+  }
+
+  const body: Record<string, unknown> = { fields };
 
   if (description) {
     body.fields = {
-      ...(body.fields as Record<string, unknown>),
+      ...fields,
       description: {
         type: "doc",
         version: 1,
