@@ -25,7 +25,16 @@
       "Skill(plan-design-review)",
       "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
       "Bash(mv CLAUDE.md /tmp/CLAUDE.md.bak)",
-      "Bash(npx shadcn@latest init -d)"
+      "Bash(npx shadcn@latest init -d)",
+      "Bash(npx shadcn@latest add card badge separator scroll-area select tooltip tabs skeleton textarea -y)",
+      "Bash(npm install:*)",
+      "Bash(npx next:*)",
+      "Bash(B=~/.claude/skills/gstack/browse/dist/browse $B goto http://localhost:3000)",
+      "Bash(B=~/.claude/skills/gstack/browse/dist/browse)",
+      "Bash($B screenshot:*)",
+      "Bash(open:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
     ]
   }
 }
