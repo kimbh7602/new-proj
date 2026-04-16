@@ -56,7 +56,7 @@ export function useAgents() {
   return { agents, loading };
 }
 
-export function useAgentEvents(limit = 50) {
+export function useAgentEvents(limit = 50, onNewEvent?: (event: AgentEvent) => void) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
 
   const fetchEvents = useCallback(async () => {
@@ -80,7 +80,9 @@ export function useAgentEvents(limit = 50) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "agent_events" },
         (payload) => {
-          setEvents((prev) => [payload.new as AgentEvent, ...prev].slice(0, limit));
+          const newEvent = payload.new as AgentEvent;
+          setEvents((prev) => [newEvent, ...prev].slice(0, limit));
+          onNewEvent?.(newEvent);
         }
       )
       .subscribe();
@@ -88,7 +90,7 @@ export function useAgentEvents(limit = 50) {
     return () => {
       supabase?.removeChannel(channel);
     };
-  }, [fetchEvents, limit]);
+  }, [fetchEvents, limit, onNewEvent]);
 
   return { events };
 }

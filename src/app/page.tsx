@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TaskList } from "@/components/task-list";
 import { TaskDetail } from "@/components/task-detail";
@@ -8,7 +8,7 @@ import { AgentDashboard } from "@/components/agent-dashboard";
 import { BoardPickerModal } from "@/components/board-picker-modal";
 import { CreateIssueModal } from "@/components/create-issue-modal";
 import { useJiraBoards, useJiraIssues } from "@/lib/use-jira";
-import { useAgents } from "@/lib/use-realtime";
+import { useAgents, useAgentEvents } from "@/lib/use-realtime";
 import type { Task, Result } from "@/types";
 
 export default function Home() {
@@ -37,8 +37,14 @@ export default function Home() {
   const [showCreateIssue, setShowCreateIssue] = useState(false);
 
   const { boards: jiraBoards, loading: boardsLoading } = useJiraBoards();
-  const { issues: jiraIssues } = useJiraIssues(activeBoardId);
+  const { issues: jiraIssues, refetch: refetchIssues } = useJiraIssues(activeBoardId);
   const { agents } = useAgents();
+
+  // Realtime: refetch issues when new agent events arrive
+  const handleNewEvent = useCallback(() => {
+    refetchIssues();
+  }, [refetchIssues]);
+  useAgentEvents(10, handleNewEvent);
 
   // Persist subscriptions to localStorage
   useEffect(() => {

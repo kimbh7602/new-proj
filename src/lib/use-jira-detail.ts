@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { adfToText } from "@/lib/jira";
 
 interface JiraComment {
@@ -26,28 +26,29 @@ export function useJiraDetail(issueKey: string | null) {
   const [detail, setDetail] = useState<JiraDetail | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const fetchDetail = useCallback(async () => {
     if (!issueKey) {
       setDetail(null);
       return;
     }
 
     setLoading(true);
-    fetch(`/api/jira/issue?key=${issueKey}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.issue) {
-          const issue = data.issue;
-          setDetail({
-            summary: issue.fields.summary,
-            description: adfToText(issue.fields.description),
-            status: issue.fields.status?.name || "",
-            assignee: issue.fields.assignee?.displayName || null,
-            priority: issue.fields.priority?.name || null,
-            labels: issue.fields.labels || [],
-            created: issue.fields.created,
-            updated: issue.fields.updated,
-            comments: (issue.fields.comment?.comments || []).map(
+    try {
+      const res = await fetch(`/api/jira/issue?key=${issueKey}`);
+      const data = await res.json();
+      if (data.issue) {
+        const issue = data.issue;
+        setDetail({
+          summary: issue.fields.summary,
+          description: adfToText(issue.fields.description),
+          status: issue.fields.status?.name || "",
+          assignee: issue.fields.assignee?.displayName || null,
+          priority: issue.fields.priority?.name || null,
+          labels: issue.fields.labels || [],
+          created: issue.fields.created,
+          updated: issue.fields.updated,
+          comments: (issue.fields.comment?.comments || [])
+            .map(
               (c: {
                 id: string;
                 author: { displayName: string };
@@ -59,16 +60,19 @@ export function useJiraDetail(issueKey: string | null) {
                 body: adfToText(c.body),
                 created: c.created,
               })
-            ).reverse(),
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setDetail(null);
-        setLoading(false);
-      });
+            )
+            .reverse(),
+        });
+      }
+    } catch {
+      setDetail(null);
+    }
+    setLoading(false);
   }, [issueKey]);
 
-  return { detail, loading };
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
+
+  return { detail, loading, refetch: fetchDetail };
 }

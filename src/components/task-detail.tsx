@@ -14,9 +14,9 @@ import type { Task, Result } from "@/types";
 interface TaskDetailProps {
   task: Task | null;
   result: Result | null;
-  onApprove: (issueKey: string, message?: string) => void;
-  onReject: (issueKey: string, message?: string) => void;
-  onReply: (issueKey: string, message: string) => void;
+  onApprove: (issueKey: string, message?: string) => Promise<void>;
+  onReject: (issueKey: string, message?: string) => Promise<void>;
+  onReply: (issueKey: string, message: string) => Promise<void>;
 }
 
 const statusBadgeVariant: Record<string, string> = {
@@ -36,7 +36,7 @@ export function TaskDetail({
   onReply,
 }: TaskDetailProps) {
   const [message, setMessage] = useState("");
-  const { detail, loading: detailLoading } = useJiraDetail(
+  const { detail, loading: detailLoading, refetch: refetchDetail } = useJiraDetail(
     task?.issue_key ?? null
   );
   const [transitions, setTransitions] = useState<
@@ -83,10 +83,32 @@ export function TaskDetail({
     );
   }
 
-  const handleReply = () => {
-    if (!message.trim()) return;
-    onReply(task.issue_key, message);
+  const [sending, setSending] = useState(false);
+
+  const handleReply = async () => {
+    if (!message.trim() || sending) return;
+    setSending(true);
+    await onReply(task.issue_key, message);
     setMessage("");
+    setSending(false);
+    // Refetch after short delay to let Jira process the comment
+    setTimeout(() => refetchDetail(), 1500);
+  };
+
+  const handleApprove = async () => {
+    setSending(true);
+    await onApprove(task.issue_key, message || undefined);
+    setMessage("");
+    setSending(false);
+    setTimeout(() => refetchDetail(), 1500);
+  };
+
+  const handleReject = async () => {
+    setSending(true);
+    await onReject(task.issue_key, message || undefined);
+    setMessage("");
+    setSending(false);
+    setTimeout(() => refetchDetail(), 1500);
   };
 
   const formatDate = (dateStr: string) => {
@@ -262,14 +284,16 @@ export function TaskDetail({
             <Button
               size="sm"
               className="bg-green-800 hover:bg-green-700 text-green-200"
-              onClick={() => onApprove(task.issue_key, message || undefined)}
+              disabled={sending}
+              onClick={handleApprove}
             >
               ✓ 승인
             </Button>
             <Button
               size="sm"
               className="bg-red-900 hover:bg-red-800 text-red-200"
-              onClick={() => onReject(task.issue_key, message || undefined)}
+              disabled={sending}
+              onClick={handleReject}
             >
               ✗ 거절
             </Button>
@@ -277,7 +301,8 @@ export function TaskDetail({
               size="sm"
               variant="outline"
               className="border-zinc-700 text-zinc-400"
-              onClick={() => onReply(task.issue_key, message)}
+              disabled={sending}
+              onClick={handleReply}
             >
               ↺ 수정 요청
             </Button>
@@ -300,10 +325,10 @@ export function TaskDetail({
           <Button
             size="sm"
             className="bg-blue-600 hover:bg-blue-500 text-white h-9 px-4"
-            disabled={!message.trim()}
+            disabled={!message.trim() || sending}
             onClick={handleReply}
           >
-            전송
+            {sending ? "전송 중..." : "전송"}
           </Button>
         </div>
       </div>
