@@ -172,11 +172,8 @@ export default function Home() {
       body: JSON.stringify({ project_key: projectKey, summary, description, labels }),
     });
     setShowCreateIssue(false);
-    if (activeBoardId) {
-      const id = activeBoardId;
-      setActiveBoardId(null);
-      setTimeout(() => setActiveBoardId(id), 100);
-    }
+    // Refetch after short delay to let Jira process
+    setTimeout(() => refetchIssues(), 1000);
   };
 
   const handleReply = async (
@@ -189,6 +186,8 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ issue_key: issueKey, action, message }),
     });
+    // Refetch after action to reflect status changes
+    setTimeout(() => refetchIssues(), 1500);
   };
 
   // Mobile: show detail when task selected, back button to return to list

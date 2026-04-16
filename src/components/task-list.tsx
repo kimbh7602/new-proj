@@ -43,12 +43,24 @@ export function TaskList({
   jiraStatuses,
   onCreateIssue,
 }: TaskListProps) {
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set());
+
+  const toggleStatus = (status: string) => {
+    setActiveStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) {
+        next.delete(status);
+      } else {
+        next.add(status);
+      }
+      return next;
+    });
+  };
 
   const filteredTasks =
-    statusFilter === "all"
+    activeStatuses.size === 0
       ? tasks
-      : tasks.filter((t) => t.jira_status === statusFilter);
+      : tasks.filter((t) => activeStatuses.has(t.jira_status));
 
   return (
     <div className="w-full md:w-[300px] bg-zinc-900 border-r border-zinc-800 flex flex-col h-full overflow-hidden">
@@ -74,18 +86,32 @@ export function TaskList({
             </option>
           ))}
         </select>
-        <select
-          className="mt-1.5 w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-300"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="all">All Statuses</option>
-          {jiraStatuses.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        {jiraStatuses.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {jiraStatuses.map((s) => (
+              <button
+                key={s}
+                onClick={() => toggleStatus(s)}
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors border",
+                  activeStatuses.has(s)
+                    ? "bg-blue-500/20 text-blue-400 border-blue-500/40"
+                    : "bg-zinc-800 text-zinc-500 border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                )}
+              >
+                {s}
+              </button>
+            ))}
+            {activeStatuses.size > 0 && (
+              <button
+                onClick={() => setActiveStatuses(new Set())}
+                className="px-2 py-0.5 rounded-full text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
