@@ -70,9 +70,10 @@ create table if not exists jira_subscriptions (
   unique(user_id, board_id)
 );
 
--- Enable Realtime on agents and agent_events
+-- Enable Realtime on agents, agent_events, and results
 alter publication supabase_realtime add table agents;
 alter publication supabase_realtime add table agent_events;
+alter publication supabase_realtime add table results;
 
 -- 90-day retention cleanup (run via pg_cron)
 -- select cron.schedule('cleanup-old-events', '0 3 * * *',

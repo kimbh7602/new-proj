@@ -8,7 +8,7 @@ import { AgentDashboard } from "@/components/agent-dashboard";
 import { BoardPickerModal } from "@/components/board-picker-modal";
 import { CreateIssueModal } from "@/components/create-issue-modal";
 import { useJiraBoards, useJiraIssues } from "@/lib/use-jira";
-import { useAgents, useAgentEvents } from "@/lib/use-realtime";
+import { useAgents, useAgentEvents, useResults } from "@/lib/use-realtime";
 import type { Task, Result } from "@/types";
 
 export default function Home() {
@@ -133,7 +133,8 @@ export default function Home() {
   const currentTask =
     filteredTasks.find((t) => t.issue_key === selectedTask) ?? null;
 
-  const currentResult: Result | null = null;
+  const { results } = useResults(currentTask?.issue_key);
+  const currentResult: Result | null = results.length > 0 ? results[0] : null;
 
   const handleBoardSubscribe = (boardId: number) => {
     if (!subscribedBoardIds.includes(boardId)) {

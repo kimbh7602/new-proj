@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Agent, AgentEvent } from "@/types";
+import type { Agent, AgentEvent, Result } from "@/types";
 
 export function useAgents() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -95,4 +95,51 @@ export function useAgentEvents(limit = 50, onNewEvent?: (event: AgentEvent) => v
   }, [fetchEvents, limit]);
 
   return { events };
+}
+
+export function useResults(issueKey?: string) {
+  const [results, setResults] = useState<Result[]>([]);
+
+  const fetchResults = useCallback(async () => {
+    if (!supabase) return;
+    let query = supabase
+      .from("results")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (issueKey) {
+      query = query.eq("jira_issue_key", issueKey);
+    }
+    const { data } = await query;
+    if (data) setResults(data);
+  }, [issueKey]);
+
+  useEffect(() => {
+    fetchResults();
+
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel(`results-realtime-${issueKey ?? "all"}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "results",
+          ...(issueKey ? { filter: `jira_issue_key=eq.${issueKey}` } : {}),
+        },
+        (payload) => {
+          const newResult = payload.new as Result;
+          setResults((prev) => [newResult, ...prev].slice(0, 20));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase?.removeChannel(channel);
+    };
+  }, [fetchResults, issueKey]);
+
+  return { results };
 }
