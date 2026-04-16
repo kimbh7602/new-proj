@@ -254,15 +254,14 @@ export function TaskDetail({
 
       {/* Action Bar */}
       <div className="px-6 py-4 border-t border-zinc-800 bg-zinc-900">
-        {task.has_pending_approval && (
-          <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-3">
             <Button
               size="sm"
               className="bg-green-800 hover:bg-green-700 text-green-200"
               disabled={sending}
               onClick={handleApprove}
             >
-              ✓ 승인
+              ✅ 승인
             </Button>
             <Button
               size="sm"
@@ -282,7 +281,6 @@ export function TaskDetail({
               ↺ 수정 요청
             </Button>
           </div>
-        )}
         <div className="flex gap-2 items-end">
           <Textarea
             value={message}
