@@ -143,10 +143,29 @@ export async function transitionIssue(issueKey: string, transitionId: string) {
 export async function createIssue(projectKey: string, summary: string, description?: string, labels?: string[]) {
   if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
 
+  // Resolve assignee accountId from JIRA_EMAIL (cached)
+  let assigneeAccountId = getCached<string>("assignee-account-id");
+  if (!assigneeAccountId && JIRA_EMAIL) {
+    try {
+      const userRes = await fetch(
+        `${JIRA_BASE_URL}/rest/api/3/user/search?query=${encodeURIComponent(JIRA_EMAIL)}`,
+        { headers }
+      );
+      if (userRes.ok) {
+        const users = (await userRes.json()) as { accountId: string }[];
+        if (users.length > 0) {
+          assigneeAccountId = users[0].accountId;
+          setCache("assignee-account-id", assigneeAccountId);
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+
   const fields: Record<string, unknown> = {
     project: { key: projectKey },
     summary,
     issuetype: { name: "Task" },
+    ...(assigneeAccountId ? { assignee: { accountId: assigneeAccountId } } : {}),
   };
 
   if (labels && labels.length > 0) {
