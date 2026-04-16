@@ -283,18 +283,29 @@ export function TaskDetail({
             </Button>
           </div>
         )}
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="에이전트에게 메시지 보내기..."
-          className="bg-zinc-800 border-zinc-700 text-zinc-300 text-sm resize-none"
-          rows={2}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              handleReply();
-            }
-          }}
-        />
+        <div className="flex gap-2 items-end">
+          <Textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="에이전트에게 메시지 보내기... (Cmd+Enter로 전송)"
+            className="bg-zinc-800 border-zinc-700 text-zinc-300 text-sm resize-none flex-1"
+            rows={2}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleReply();
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-500 text-white h-9 px-4"
+            disabled={!message.trim()}
+            onClick={handleReply}
+          >
+            전송
+          </Button>
+        </div>
       </div>
     </div>
   );
