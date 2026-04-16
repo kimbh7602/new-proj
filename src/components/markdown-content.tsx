@@ -18,9 +18,9 @@ const proseClasses = [
   "[&_pre]:bg-zinc-950 [&_pre]:border [&_pre]:border-zinc-800 [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-[13px] [&_pre]:overflow-x-auto",
   "[&_code]:text-[13px] [&_code]:font-mono",
   "[&_:not(pre)>code]:bg-zinc-800 [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:text-blue-400",
-  // Tables
-  "[&_table]:w-full [&_table]:text-sm [&_table]:border-collapse [&_table]:my-4",
-  "[&_th]:text-left [&_th]:text-zinc-400 [&_th]:font-medium [&_th]:py-2 [&_th]:px-3 [&_th]:border-b [&_th]:border-zinc-700 [&_th]:bg-zinc-900",
+  // Tables — wrap in scrollable container
+  "[&_table]:w-full [&_table]:text-sm [&_table]:border-collapse [&_table]:my-4 [&_table]:block [&_table]:overflow-x-auto",
+  "[&_th]:text-left [&_th]:text-zinc-400 [&_th]:font-medium [&_th]:py-2 [&_th]:px-3 [&_th]:border-b [&_th]:border-zinc-700 [&_th]:bg-zinc-900 [&_th]:whitespace-nowrap",
   "[&_td]:py-2 [&_td]:px-3 [&_td]:border-b [&_td]:border-zinc-800 [&_td]:text-zinc-300",
   "[&_tr:hover]:bg-zinc-800/30",
   // Blockquotes
@@ -41,7 +41,7 @@ interface MarkdownContentProps {
 
 export function MarkdownContent({ content, className = "" }: MarkdownContentProps) {
   return (
-    <div className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-hidden break-words ${proseClasses} ${className}`}>
+    <div className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-x-auto overflow-y-hidden break-words [overflow-wrap:anywhere] ${proseClasses} ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {content}
       </ReactMarkdown>
