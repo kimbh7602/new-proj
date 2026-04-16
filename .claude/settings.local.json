@@ -51,7 +51,10 @@
       "Bash(B=~/.claude/skills/gstack/browse/dist/browse $B goto http://localhost:3000 2)",
       "Bash(1 sleep:*)",
       "Bash(B=~/.claude/skills/gstack/browse/dist/browse $B click \"+ Add Board\" 2)",
-      "Bash(curl -s \"https://new-proj-teal.vercel.app/api/jira/issues?boardId=171\")"
+      "Bash(curl -s \"https://new-proj-teal.vercel.app/api/jira/issues?boardId=171\")",
+      "Bash(vercel logs:*)",
+      "Bash(curl -s \"http://localhost:3000/api/jira/issue?key=BH-1\")",
+      "Bash(curl -s \"http://localhost:3000/api/jira/issue?key=BH-4\")"
     ]
   }
 }

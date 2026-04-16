@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ export function TaskDetail({
   onReply,
 }: TaskDetailProps) {
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const { detail, loading: detailLoading, refetch: refetchDetail } = useJiraDetail(
     task?.issue_key ?? null
   );
@@ -64,7 +64,6 @@ export function TaskDetail({
       }),
     });
     setTransitioning(false);
-    // Refresh transitions
     const res = await fetch(`/api/jira/transition?key=${task.issue_key}`);
     const data = await res.json();
     setTransitions(data.transitions || []);
@@ -82,8 +81,6 @@ export function TaskDetail({
       </div>
     );
   }
-
-  const [sending, setSending] = useState(false);
 
   const handleReply = async () => {
     if (!message.trim() || sending) return;
@@ -201,7 +198,6 @@ export function TaskDetail({
             </div>
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3">
               <ReactMarkdown
-                rehypePlugins={[rehypeHighlight]}
                 remarkPlugins={[remarkGfm]}
               >
                 {detail.description}
@@ -218,7 +214,6 @@ export function TaskDetail({
             </div>
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3">
               <ReactMarkdown
-                rehypePlugins={[rehypeHighlight]}
                 remarkPlugins={[remarkGfm]}
               >
                 {result.content_md}
@@ -264,8 +259,7 @@ export function TaskDetail({
                   </div>
                   <div className="prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3 text-zinc-400">
                     <ReactMarkdown
-                      rehypePlugins={[rehypeHighlight]}
-                      remarkPlugins={[remarkGfm]}
+                            remarkPlugins={[remarkGfm]}
                     >
                       {comment.body}
                     </ReactMarkdown>
