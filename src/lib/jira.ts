@@ -1,12 +1,18 @@
+/**
+ * Jira API 클라이언트.
+ *
+ * 인증 우선순위:
+ *   1. 유저별 OAuth 토큰 (Jira OAuth 2.0 3LO)
+ *   2. 환경변수 Basic Auth 폴백 (JIRA_EMAIL + JIRA_API_TOKEN)
+ */
+
+import { getCurrentUser } from "@/lib/session";
+import { refreshAccessToken } from "@/lib/jira-oauth";
+import { createServiceClient } from "@/lib/supabase";
+
 const JIRA_BASE_URL = process.env.JIRA_BASE_URL || "";
 const JIRA_EMAIL = process.env.JIRA_EMAIL || "";
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN || "";
-
-const headers = {
-  Authorization: `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64")}`,
-  Accept: "application/json",
-  "Content-Type": "application/json",
-};
 
 // Server-side in-memory cache (10s TTL for near-realtime)
 const cache = new Map<string, { data: unknown; expires: number }>();
@@ -23,12 +29,78 @@ function setCache(key: string, data: unknown) {
   cache.set(key, { data, expires: Date.now() + CACHE_TTL });
 }
 
-async function jiraFetch(path: string, apiVersion: "agile" | "api" = "agile") {
-  if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
+/** Jira 인증 정보 — OAuth 토큰 또는 Basic Auth */
+interface JiraAuth {
+  baseUrl: string;
+  headers: Record<string, string>;
+  accountId?: string;
+}
 
+async function resolveAuth(): Promise<JiraAuth> {
+  // Try OAuth user first
+  try {
+    const user = await getCurrentUser();
+    if (user?.jira_access_token && user.jira_cloud_id) {
+      let accessToken = user.jira_access_token;
+
+      // Check if token is expired and refresh
+      if (
+        user.jira_token_expires_at &&
+        new Date(user.jira_token_expires_at) < new Date()
+      ) {
+        if (user.jira_refresh_token) {
+          const tokens = await refreshAccessToken(user.jira_refresh_token);
+          accessToken = tokens.access_token;
+
+          // Update tokens in DB
+          const supabase = createServiceClient();
+          await supabase
+            .from("users")
+            .update({
+              jira_access_token: tokens.access_token,
+              jira_refresh_token: tokens.refresh_token,
+              jira_token_expires_at: new Date(
+                Date.now() + tokens.expires_in * 1000
+              ).toISOString(),
+            })
+            .eq("id", user.id);
+        }
+      }
+
+      return {
+        baseUrl: `https://api.atlassian.com/ex/jira/${user.jira_cloud_id}`,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        accountId: user.jira_account_id ?? undefined,
+      };
+    }
+  } catch {
+    // Fall through to env-based auth
+  }
+
+  // Fallback to env-based Basic Auth
+  if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
+  return {
+    baseUrl: JIRA_BASE_URL,
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64")}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  };
+}
+
+async function jiraFetch(
+  path: string,
+  apiVersion: "agile" | "api" = "agile"
+) {
+  const auth = await resolveAuth();
   const base = apiVersion === "agile" ? "/rest/agile/1.0" : "/rest/api/3";
-  const res = await fetch(`${JIRA_BASE_URL}${base}${path}`, {
-    headers,
+  const res = await fetch(`${auth.baseUrl}${base}${path}`, {
+    headers: auth.headers,
   });
 
   if (res.status === 429) {
@@ -42,6 +114,24 @@ async function jiraFetch(path: string, apiVersion: "agile" | "api" = "agile") {
   }
 
   return res.json();
+}
+
+async function jiraPost(path: string, body: unknown) {
+  const auth = await resolveAuth();
+  const res = await fetch(`${auth.baseUrl}/rest/api/3${path}`, {
+    method: "POST",
+    headers: auth.headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Jira API error: ${res.status} ${err}`);
+  }
+
+  // Some endpoints return 204 with no body
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
 }
 
 export interface JiraBoard {
@@ -88,7 +178,10 @@ export interface JiraIssueDetail {
     summary: string;
     description: unknown;
     status: { name: string };
-    assignee?: { displayName: string; avatarUrls?: Record<string, string> } | null;
+    assignee?: {
+      displayName: string;
+      avatarUrls?: Record<string, string>;
+    } | null;
     priority?: { name: string } | null;
     labels: string[];
     created: string;
@@ -96,7 +189,10 @@ export interface JiraIssueDetail {
     comment: {
       comments: {
         id: string;
-        author: { displayName: string; avatarUrls?: Record<string, string> };
+        author: {
+          displayName: string;
+          avatarUrls?: Record<string, string>;
+        };
         body: unknown;
         created: string;
         updated: string;
@@ -105,7 +201,9 @@ export interface JiraIssueDetail {
   };
 }
 
-export async function getIssueDetail(issueKey: string): Promise<JiraIssueDetail> {
+export async function getIssueDetail(
+  issueKey: string
+): Promise<JiraIssueDetail> {
   const cacheKey = `issue-${issueKey}`;
   const cached = getCached<JiraIssueDetail>(cacheKey);
   if (cached) return cached;
@@ -123,49 +221,31 @@ export async function getIssueTransitions(issueKey: string) {
   return data.transitions as { id: string; name: string }[];
 }
 
-export async function transitionIssue(issueKey: string, transitionId: string) {
-  if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
-
-  const res = await fetch(
-    `${JIRA_BASE_URL}/rest/api/3/issue/${issueKey}/transitions`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ transition: { id: transitionId } }),
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Jira transition error: ${res.status} ${res.statusText}`);
-  }
+export async function transitionIssue(
+  issueKey: string,
+  transitionId: string
+) {
+  await jiraPost(`/issue/${issueKey}/transitions`, {
+    transition: { id: transitionId },
+  });
 }
 
-export async function createIssue(projectKey: string, summary: string, description?: string, labels?: string[]) {
-  if (!JIRA_BASE_URL) throw new Error("JIRA_BASE_URL not configured");
-
-  // Resolve assignee accountId from JIRA_EMAIL (cached)
-  let assigneeAccountId = getCached<string>("assignee-account-id");
-  if (!assigneeAccountId && JIRA_EMAIL) {
-    try {
-      const userRes = await fetch(
-        `${JIRA_BASE_URL}/rest/api/3/user/search?query=${encodeURIComponent(JIRA_EMAIL)}`,
-        { headers }
-      );
-      if (userRes.ok) {
-        const users = (await userRes.json()) as { accountId: string }[];
-        if (users.length > 0) {
-          assigneeAccountId = users[0].accountId;
-          setCache("assignee-account-id", assigneeAccountId);
-        }
-      }
-    } catch { /* non-fatal */ }
-  }
+export async function createIssue(
+  projectKey: string,
+  summary: string,
+  description?: string,
+  labels?: string[]
+) {
+  // Auto-assign to current OAuth user
+  const auth = await resolveAuth();
 
   const fields: Record<string, unknown> = {
     project: { key: projectKey },
     summary,
     issuetype: { name: "Task" },
-    ...(assigneeAccountId ? { assignee: { accountId: assigneeAccountId } } : {}),
+    ...(auth.accountId
+      ? { assignee: { accountId: auth.accountId } }
+      : {}),
   };
 
   if (labels && labels.length > 0) {
@@ -190,18 +270,11 @@ export async function createIssue(projectKey: string, summary: string, descripti
     };
   }
 
-  const res = await fetch(`${JIRA_BASE_URL}/rest/api/3/issue`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Jira create error: ${res.status} ${err}`);
-  }
-
-  return res.json() as Promise<{ id: string; key: string; self: string }>;
+  return jiraPost("/issue", body) as Promise<{
+    id: string;
+    key: string;
+    self: string;
+  }>;
 }
 
 // Re-export for backward compatibility (server-side callers)

@@ -14,6 +14,12 @@ create table if not exists users (
   email text not null unique,
   team_id uuid references teams(id),
   role text default 'member',
+  jira_account_id text,
+  jira_access_token text,
+  jira_refresh_token text,
+  jira_token_expires_at timestamptz,
+  jira_cloud_id text,
+  jira_site_url text,
   created_at timestamptz default now()
 );
 

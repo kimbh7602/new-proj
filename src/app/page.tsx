@@ -9,9 +9,35 @@ import { BoardPickerModal } from "@/components/board-picker-modal";
 import { CreateIssueModal } from "@/components/create-issue-modal";
 import { useJiraBoards, useJiraIssues } from "@/lib/use-jira";
 import { useAgents, useAgentEvents, useResults } from "@/lib/use-realtime";
+import { useAuth } from "@/lib/use-auth";
 import type { Task, Result } from "@/types";
 
+function LoginPage() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-zinc-950">
+      <div className="text-center space-y-6 px-4">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-white">Agent Control Center</h1>
+          <p className="text-sm text-zinc-400">
+            Jira 계정으로 로그인하여 에이전트를 관리하세요
+          </p>
+        </div>
+        <a
+          href="/api/auth/jira"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24.013 12.487V1.005A1.005 1.005 0 0 0 23.013 0z"/>
+          </svg>
+          Jira로 로그인
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
+  const { user, loading: authLoading, logout } = useAuth();
   const [activeView, setActiveView] = useState("tasks");
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [boardFilter, setBoardFilter] = useState("all");
@@ -193,6 +219,18 @@ export default function Home() {
   // Mobile: show detail when task selected, back button to return to list
   const mobileShowDetail = selectedTask !== null;
 
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <div className="text-zinc-500 text-sm">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar — hidden on mobile, toggle with hamburger */}
@@ -219,6 +257,8 @@ export default function Home() {
               setActiveView(view);
             }}
             boards={sidebarBoards}
+            userEmail={user?.email}
+            onLogout={logout}
           />
         </div>
       </div>

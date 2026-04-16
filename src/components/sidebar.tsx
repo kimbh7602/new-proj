@@ -6,9 +6,11 @@ interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
   boards: { id: number; name: string; project_key: string }[];
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
-export function Sidebar({ activeView, onViewChange, boards }: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, boards, userEmail, onLogout }: SidebarProps) {
   return (
     <aside className="w-[220px] bg-zinc-900 border-r border-zinc-800 flex flex-col h-full">
       <h1 className="text-[15px] font-semibold text-white px-4 py-5">
@@ -66,6 +68,20 @@ export function Sidebar({ activeView, onViewChange, boards }: SidebarProps) {
         active={activeView === "settings"}
         onClick={() => onViewChange("settings")}
       />
+
+      {userEmail && (
+        <div className="px-4 py-3 border-t border-zinc-800">
+          <div className="text-[11px] text-zinc-500 truncate mb-1">
+            {userEmail}
+          </div>
+          <button
+            onClick={onLogout}
+            className="text-[12px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            로그아웃
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

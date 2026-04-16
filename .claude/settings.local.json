@@ -57,7 +57,9 @@
       "Bash(curl -s \"http://localhost:3000/api/jira/issue?key=BH-4\")",
       "Bash(curl -s -X POST http://localhost:4000/api/feedback -H \"Content-Type: application/json\" -d '{\"\"issue_key\"\":\"\"BH-4\"\",\"\"action\"\":\"\"reply\"\",\"\"message\"\":\"\"test\"\"}')",
       "Bash(curl:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Skill(checkpoint)",
+      "Skill(checkpoint:*)"
     ]
   }
 }
