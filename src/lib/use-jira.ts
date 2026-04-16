@@ -68,6 +68,10 @@ export function useJiraIssues(boardId: number | null) {
 
   useEffect(() => {
     fetchIssues();
+
+    // Auto-refresh every 15 seconds
+    const interval = setInterval(fetchIssues, 15_000);
+    return () => clearInterval(interval);
   }, [fetchIssues]);
 
   return { issues, loading, refetch: fetchIssues };

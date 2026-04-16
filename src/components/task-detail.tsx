@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MarkdownContent } from "@/components/markdown-content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -196,13 +195,7 @@ export function TaskDetail({
             <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2">
               Description
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-              >
-                {detail.description}
-              </ReactMarkdown>
-            </div>
+            <MarkdownContent content={detail.description} />
           </div>
         ) : null}
 
@@ -212,13 +205,7 @@ export function TaskDetail({
             <div className="text-[11px] text-zinc-500 uppercase tracking-wider mb-2">
               Agent Result
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-              >
-                {result.content_md}
-              </ReactMarkdown>
-            </div>
+            <MarkdownContent content={result.content_md} />
           </div>
         )}
 
@@ -257,13 +244,7 @@ export function TaskDetail({
                       {formatDate(comment.created)}
                     </span>
                   </div>
-                  <div className="prose prose-invert prose-sm max-w-none leading-7 [&_p]:mb-3 [&_li]:mb-1.5 [&_pre]:my-4 [&_h2]:mt-6 [&_h3]:mt-5 [&_ul]:my-3 text-zinc-400">
-                    <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                    >
-                      {comment.body}
-                    </ReactMarkdown>
-                  </div>
+                  <MarkdownContent content={comment.body} />
                 </div>
               ))}
             </div>

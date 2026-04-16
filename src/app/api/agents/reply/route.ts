@@ -102,13 +102,15 @@ export async function POST(request: NextRequest) {
         callbackHeaders["X-Webhook-Signature"] = `sha256=${sig}`;
       }
 
-      await fetch(symphonyCallbackUrl, {
+      const cbRes = await fetch(symphonyCallbackUrl, {
         method: "POST",
         headers: callbackHeaders,
         body: callbackBody,
       });
-    } catch {
-      // Non-blocking: Symphony might be down, but Jira comment was already posted
+      const cbData = await cbRes.text();
+      console.log(`Symphony callback: ${cbRes.status} ${cbData}`);
+    } catch (err) {
+      console.error("Symphony callback failed:", err);
     }
   }
 

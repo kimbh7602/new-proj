@@ -8,9 +8,9 @@ const headers = {
   "Content-Type": "application/json",
 };
 
-// Server-side in-memory cache (30s TTL)
+// Server-side in-memory cache (10s TTL for near-realtime)
 const cache = new Map<string, { data: unknown; expires: number }>();
-const CACHE_TTL = 30_000;
+const CACHE_TTL = 10_000;
 
 function getCached<T>(key: string): T | null {
   const entry = cache.get(key);

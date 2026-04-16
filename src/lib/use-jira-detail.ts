@@ -72,6 +72,10 @@ export function useJiraDetail(issueKey: string | null) {
 
   useEffect(() => {
     fetchDetail();
+
+    // Auto-refresh every 10 seconds for near-realtime updates
+    const interval = setInterval(fetchDetail, 10_000);
+    return () => clearInterval(interval);
   }, [fetchDetail]);
 
   return { detail, loading, refetch: fetchDetail };
