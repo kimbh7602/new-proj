@@ -15,8 +15,24 @@ export default function Home() {
   const [activeView, setActiveView] = useState("tasks");
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [boardFilter, setBoardFilter] = useState("all");
-  const [subscribedBoardIds, setSubscribedBoardIds] = useState<number[]>([]);
-  const [activeBoardId, setActiveBoardId] = useState<number | null>(null);
+  const [subscribedBoardIds, setSubscribedBoardIds] = useState<number[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("acc-subscribed-boards");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [activeBoardId, setActiveBoardId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = localStorage.getItem("acc-active-board");
+      return saved ? Number(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [showBoardPicker, setShowBoardPicker] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
 
@@ -24,7 +40,18 @@ export default function Home() {
   const { issues: jiraIssues } = useJiraIssues(activeBoardId);
   const { agents } = useAgents();
 
-  // Auto-subscribe to first board
+  // Persist subscriptions to localStorage
+  useEffect(() => {
+    localStorage.setItem("acc-subscribed-boards", JSON.stringify(subscribedBoardIds));
+  }, [subscribedBoardIds]);
+
+  useEffect(() => {
+    if (activeBoardId !== null) {
+      localStorage.setItem("acc-active-board", String(activeBoardId));
+    }
+  }, [activeBoardId]);
+
+  // Auto-subscribe to first board (only if nothing saved)
   useEffect(() => {
     if (jiraBoards.length > 0 && subscribedBoardIds.length === 0) {
       const firstId = jiraBoards[0].id;
