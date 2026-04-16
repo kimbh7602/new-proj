@@ -59,7 +59,7 @@ export function useJiraDetail(issueKey: string | null) {
                 body: adfToText(c.body),
                 created: c.created,
               })
-            ),
+            ).reverse(),
           });
         }
         setLoading(false);
