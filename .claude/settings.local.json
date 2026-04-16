@@ -43,7 +43,14 @@
       "Bash(vercel inspect:*)",
       "Bash(vercel ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(openssl rand:*)"
+      "Bash(openssl rand:*)",
+      "Bash(curl -s http://localhost:3000/api/jira/issues?boardId=171)",
+      "Bash($B goto:*)",
+      "Bash($B execute:*)",
+      "Bash(B=~/.claude/skills/gstack/browse/dist/browse $B console)",
+      "Bash(B=~/.claude/skills/gstack/browse/dist/browse $B goto http://localhost:3000 2)",
+      "Bash(1 sleep:*)",
+      "Bash(B=~/.claude/skills/gstack/browse/dist/browse $B click \"+ Add Board\" 2)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { adfToText } from "@/lib/jira";
+import { adfToText } from "@/lib/adf-to-markdown";
 
 interface JiraComment {
   id: string;

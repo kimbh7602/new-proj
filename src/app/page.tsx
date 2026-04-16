@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { TaskList } from "@/components/task-list";
 import { TaskDetail } from "@/components/task-detail";
@@ -41,9 +41,11 @@ export default function Home() {
   const { agents } = useAgents();
 
   // Realtime: refetch issues when new agent events arrive
+  const refetchRef = React.useRef(refetchIssues);
+  refetchRef.current = refetchIssues;
   const handleNewEvent = useCallback(() => {
-    refetchIssues();
-  }, [refetchIssues]);
+    refetchRef.current();
+  }, []);
   useAgentEvents(10, handleNewEvent);
 
   // Persist subscriptions to localStorage
@@ -71,15 +73,15 @@ export default function Home() {
     return jiraIssues.map((issue) => {
       // Find agent working on this issue
       const agent = agents.find((a) =>
-        a.current_task_ids.includes(issue.key)
+        a.current_task_ids?.includes(issue.key)
       );
 
+      const jiraStatusName = issue.fields?.status?.name || "";
       let status: Task["status"] = "idle";
       if (agent) {
         status = agent.status === "running" ? "running" : agent.status;
       } else {
-        // Map Jira status to our status
-        const jiraStatus = issue.fields.status.name.toLowerCase();
+        const jiraStatus = jiraStatusName.toLowerCase();
         if (jiraStatus.includes("done") || jiraStatus.includes("완료")) {
           status = "completed";
         } else if (jiraStatus.includes("progress") || jiraStatus.includes("진행")) {
@@ -89,9 +91,9 @@ export default function Home() {
 
       return {
         issue_key: issue.key,
-        title: issue.fields.summary,
+        title: issue.fields?.summary || "Untitled",
         status,
-        jira_status: issue.fields.status.name,
+        jira_status: jiraStatusName,
         agent_name: agent?.name || null,
         agent_id: agent?.id || null,
         elapsed: agent ? "진행 중" : "",
