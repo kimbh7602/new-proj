@@ -83,17 +83,32 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Forward to Symphony callback URL if configured
+  // Forward to Symphony feedback server (HTTP direct)
   const symphonyCallbackUrl = process.env.SYMPHONY_CALLBACK_URL;
   if (symphonyCallbackUrl) {
     try {
+      const callbackBody = JSON.stringify({ issue_key, action, message });
+      const callbackHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // HMAC signature (same secret as webhook)
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const { createHmac } = await import("crypto");
+        const sig = createHmac("sha256", webhookSecret)
+          .update(callbackBody)
+          .digest("hex");
+        callbackHeaders["X-Webhook-Signature"] = `sha256=${sig}`;
+      }
+
       await fetch(symphonyCallbackUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ issue_key, action, message }),
+        headers: callbackHeaders,
+        body: callbackBody,
       });
     } catch {
-      // Non-blocking
+      // Non-blocking: Symphony might be down, but Jira comment was already posted
     }
   }
 
