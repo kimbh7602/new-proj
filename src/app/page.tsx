@@ -271,7 +271,7 @@ export default function Home() {
           {/* Task Detail — full width on mobile when task selected */}
           <div className={`
             ${mobileShowDetail ? "flex-1 flex flex-col" : "hidden"}
-            md:flex-1 md:flex md:flex-col
+            md:flex-1 md:flex md:flex-col overflow-hidden w-full
           `}>
             {/* Mobile back button */}
             {mobileShowDetail && (
