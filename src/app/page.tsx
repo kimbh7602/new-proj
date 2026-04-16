@@ -35,8 +35,9 @@ export default function Home() {
   });
   const [showBoardPicker, setShowBoardPicker] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
 
-  const { boards: jiraBoards, loading: boardsLoading } = useJiraBoards();
+  const { boards: jiraBoards } = useJiraBoards();
   const { issues: jiraIssues, refetch: refetchIssues } = useJiraIssues(activeBoardId);
   const { agents } = useAgents();
 
@@ -71,7 +72,6 @@ export default function Home() {
   // Convert Jira issues to Task format
   const tasks: Task[] = useMemo(() => {
     return jiraIssues.map((issue) => {
-      // Find agent working on this issue
       const agent = agents.find((a) =>
         a.current_task_ids?.includes(issue.key)
       );
@@ -133,7 +133,6 @@ export default function Home() {
   const currentTask =
     filteredTasks.find((t) => t.issue_key === selectedTask) ?? null;
 
-  // TODO: Fetch actual result from Supabase
   const currentResult: Result | null = null;
 
   const handleBoardSubscribe = (boardId: number) => {
@@ -172,7 +171,6 @@ export default function Home() {
       body: JSON.stringify({ project_key: projectKey, summary, description, labels }),
     });
     setShowCreateIssue(false);
-    // Refresh by toggling active board
     if (activeBoardId) {
       const id = activeBoardId;
       setActiveBoardId(null);
@@ -192,46 +190,113 @@ export default function Home() {
     });
   };
 
+  // Mobile: show detail when task selected, back button to return to list
+  const mobileShowDetail = selectedTask !== null;
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        activeView={activeView}
-        onViewChange={(view) => {
-          if (view === "add-board") {
-            setShowBoardPicker(true);
-            return;
-          }
-          setActiveView(view);
-        }}
-        boards={sidebarBoards}
-      />
+      {/* Sidebar — hidden on mobile, toggle with hamburger */}
+      <div className={`
+        ${showSidebar ? "fixed inset-0 z-40 flex" : "hidden"}
+        md:relative md:flex md:z-auto
+      `}>
+        {/* Backdrop */}
+        {showSidebar && (
+          <div
+            className="fixed inset-0 bg-black/50 md:hidden"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+        <div className="relative z-50">
+          <Sidebar
+            activeView={activeView}
+            onViewChange={(view) => {
+              setShowSidebar(false);
+              if (view === "add-board") {
+                setShowBoardPicker(true);
+                return;
+              }
+              setActiveView(view);
+            }}
+            boards={sidebarBoards}
+          />
+        </div>
+      </div>
 
       {activeView === "dashboard" ? (
-        <AgentDashboard agents={agents} />
+        <div className="flex-1 flex flex-col">
+          {/* Mobile header */}
+          <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-zinc-800 bg-zinc-900">
+            <button onClick={() => setShowSidebar(true)} className="text-zinc-400">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              </svg>
+            </button>
+            <span className="text-sm font-semibold text-white">Dashboard</span>
+          </div>
+          <AgentDashboard agents={agents} />
+        </div>
       ) : (
         <>
-          <TaskList
-            tasks={filteredTasks}
-            selectedKey={selectedTask}
-            onSelect={setSelectedTask}
-            boardFilter={boardFilter}
-            onBoardFilterChange={(filter) => {
-              setBoardFilter(filter);
-              // Switch active board for fetching issues
-              const board = jiraBoards.find((b) => b.name === filter);
-              if (board) setActiveBoardId(board.id);
-            }}
-            boards={subscribedBoards.map((b) => b.name)}
-            jiraStatuses={jiraStatuses}
-            onCreateIssue={() => setShowCreateIssue(true)}
-          />
-          <TaskDetail
-            task={currentTask}
-            result={currentResult}
-            onApprove={(key, msg) => handleReply(key, "approve", msg)}
-            onReject={(key, msg) => handleReply(key, "reject", msg)}
-            onReply={(key, msg) => handleReply(key, "reply", msg)}
-          />
+          {/* Task List — full width on mobile when no task selected */}
+          <div className={`
+            ${mobileShowDetail ? "hidden" : "flex-1"}
+            md:flex-none md:block
+          `}>
+            {/* Mobile header */}
+            <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-zinc-800 bg-zinc-900">
+              <button onClick={() => setShowSidebar(true)} className="text-zinc-400">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                </svg>
+              </button>
+              <span className="text-sm font-semibold text-white">Tasks</span>
+            </div>
+            <TaskList
+              tasks={filteredTasks}
+              selectedKey={selectedTask}
+              onSelect={setSelectedTask}
+              boardFilter={boardFilter}
+              onBoardFilterChange={(filter) => {
+                setBoardFilter(filter);
+                const board = jiraBoards.find((b) => b.name === filter);
+                if (board) setActiveBoardId(board.id);
+              }}
+              boards={subscribedBoards.map((b) => b.name)}
+              jiraStatuses={jiraStatuses}
+              onCreateIssue={() => setShowCreateIssue(true)}
+            />
+          </div>
+
+          {/* Task Detail — full width on mobile when task selected */}
+          <div className={`
+            ${mobileShowDetail ? "flex-1 flex flex-col" : "hidden"}
+            md:flex-1 md:flex md:flex-col
+          `}>
+            {/* Mobile back button */}
+            {mobileShowDetail && (
+              <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-zinc-800 bg-zinc-900">
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="text-zinc-400"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M12 4L6 10L12 16" />
+                  </svg>
+                </button>
+                <span className="text-sm font-semibold text-white truncate">
+                  {currentTask?.issue_key} {currentTask?.title}
+                </span>
+              </div>
+            )}
+            <TaskDetail
+              task={currentTask}
+              result={currentResult}
+              onApprove={(key, msg) => handleReply(key, "approve", msg)}
+              onReject={(key, msg) => handleReply(key, "reject", msg)}
+              onReply={(key, msg) => handleReply(key, "reply", msg)}
+            />
+          </div>
         </>
       )}
       {showCreateIssue && (

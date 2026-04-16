@@ -51,7 +51,7 @@ export function TaskList({
       : tasks.filter((t) => t.jira_status === statusFilter);
 
   return (
-    <div className="w-[300px] bg-zinc-900 border-r border-zinc-800 flex flex-col h-full overflow-hidden">
+    <div className="w-full md:w-[300px] bg-zinc-900 border-r border-zinc-800 flex flex-col h-full overflow-hidden">
       <div className="p-4 border-b border-zinc-800">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-sm font-semibold text-white">Tasks</h2>
