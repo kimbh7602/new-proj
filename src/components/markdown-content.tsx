@@ -41,7 +41,7 @@ interface MarkdownContentProps {
 
 export function MarkdownContent({ content, className = "" }: MarkdownContentProps) {
   return (
-    <div className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 ${proseClasses} ${className}`}>
+    <div className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 overflow-hidden break-words ${proseClasses} ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {content}
       </ReactMarkdown>

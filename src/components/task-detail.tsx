@@ -118,11 +118,11 @@ export function TaskDetail({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
-        <div>
-          <h2 className="text-base font-semibold text-white">
+      <div className="px-4 md:px-6 py-4 border-b border-zinc-800 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-white truncate">
             {task.issue_key} {task.title}
           </h2>
           <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
@@ -183,7 +183,7 @@ export function TaskDetail({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 min-w-0">
         {/* Jira Description */}
         {detailLoading ? (
           <div className="space-y-2">
@@ -253,7 +253,7 @@ export function TaskDetail({
       </div>
 
       {/* Action Bar */}
-      <div className="px-6 py-4 border-t border-zinc-800 bg-zinc-900">
+      <div className="px-4 md:px-6 py-4 border-t border-zinc-800 bg-zinc-900">
         <div className="flex gap-2 mb-3">
             <Button
               size="sm"
