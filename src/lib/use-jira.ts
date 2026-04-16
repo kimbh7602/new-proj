@@ -47,12 +47,19 @@ export function useJiraIssues(boardId: number | null) {
   const [loading, setLoading] = useState(false);
 
   const fetchIssues = useCallback(async () => {
-    if (!boardId) return;
+    if (!boardId) {
+      setIssues([]);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/jira/issues?boardId=${boardId}`);
       const data = await res.json();
-      setIssues(data.issues || []);
+      // Filter out issues without required fields
+      const valid = (data.issues || []).filter(
+        (i: JiraIssue) => i && i.key && i.fields
+      );
+      setIssues(valid);
     } catch {
       setIssues([]);
     }

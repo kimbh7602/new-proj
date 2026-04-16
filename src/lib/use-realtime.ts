@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Agent, AgentEvent } from "@/types";
 
@@ -58,6 +58,8 @@ export function useAgents() {
 
 export function useAgentEvents(limit = 50, onNewEvent?: (event: AgentEvent) => void) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
+  const onNewEventRef = React.useRef(onNewEvent);
+  onNewEventRef.current = onNewEvent;
 
   const fetchEvents = useCallback(async () => {
     if (!supabase) return;
@@ -82,7 +84,7 @@ export function useAgentEvents(limit = 50, onNewEvent?: (event: AgentEvent) => v
         (payload) => {
           const newEvent = payload.new as AgentEvent;
           setEvents((prev) => [newEvent, ...prev].slice(0, limit));
-          onNewEvent?.(newEvent);
+          onNewEventRef.current?.(newEvent);
         }
       )
       .subscribe();
@@ -90,7 +92,7 @@ export function useAgentEvents(limit = 50, onNewEvent?: (event: AgentEvent) => v
     return () => {
       supabase?.removeChannel(channel);
     };
-  }, [fetchEvents, limit, onNewEvent]);
+  }, [fetchEvents, limit]);
 
   return { events };
 }

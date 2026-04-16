@@ -71,7 +71,7 @@ export default function Home() {
 
   // Convert Jira issues to Task format
   const tasks: Task[] = useMemo(() => {
-    return jiraIssues.map((issue) => {
+    return jiraIssues.filter((issue) => issue?.key && issue?.fields).map((issue) => {
       const agent = agents.find((a) =>
         a.current_task_ids?.includes(issue.key)
       );
